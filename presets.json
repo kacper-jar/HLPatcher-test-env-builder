@@ -1,0 +1,14 @@
+[
+  {
+    "name": "All (*)",
+    "rule": "all"
+  },
+  {
+    "name": "GoldSrc only",
+    "rule": {"require": ["goldsrc"]}
+  },
+  {
+    "name": "Source only",
+    "rule": {"require": ["source"]}
+  }
+]
