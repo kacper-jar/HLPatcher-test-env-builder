@@ -244,6 +244,7 @@ def run_installation_thread():
             if src_path.exists():
                 ui_queue.put(("log", f"  Merging {src}..."))
                 shutil.copytree(src_path, out_path, dirs_exist_ok=True)
+                shutil.rmtree(src_path)
         ui_queue.put(("task_advance", 1))
 
     ui_queue.put(("log", "Cleaning up current-download..."))
