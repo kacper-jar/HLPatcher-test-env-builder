@@ -3,66 +3,88 @@
     "title": "Half-Life",
     "foldername": "hl",
     "tags": ["goldsrc", "game", "hl1"],
-    "steps": [{"type": "steam", "app": "70"}]
+    "steps": [{"type": "steam", "app": "70"}],
+    "download_size_mb": 400,
+    "final_size_mb": 100
   },
   {
     "title": "Half-Life: Opposing Force",
     "foldername": "opfor",
     "tags": ["goldsrc", "game"],
-    "steps": [{"type": "steam", "app": "50"}]
+    "steps": [{"type": "steam", "app": "50"}],
+    "download_size_mb": 900,
+    "final_size_mb": 300
   },
   {
     "title": "Half-Life: Blue Shift",
     "foldername": "bshift",
     "tags": ["goldsrc", "game"],
-    "steps": [{"type": "steam", "app": "130"}]
+    "steps": [{"type": "steam", "app": "130"}],
+    "download_size_mb": 900,
+    "final_size_mb": 300
   },
   {
     "title": "Deathmatch Classic",
     "foldername": "dmc",
     "tags": ["goldsrc", "game"],
-    "steps": [{"type": "steam", "app": "40"}]
+    "steps": [{"type": "steam", "app": "40"}],
+    "download_size_mb": 700,
+    "final_size_mb": 100
   },
   {
     "title": "Counter-Strike",
     "foldername": "cstrike",
     "tags": ["goldsrc", "game"],
-    "steps": [{"type": "steam", "app": "10"}]
+    "steps": [{"type": "steam", "app": "10"}],
+    "download_size_mb": 900,
+    "final_size_mb": 400
   },
   {
     "title": "Half-Life 2",
     "foldername": "hl2",
     "tags": ["source", "game"],
-    "steps": [{"type": "steam", "app": "220", "branch": "steam_legacy"}]
+    "steps": [{"type": "steam", "app": "220", "branch": "steam_legacy"}],
+    "download_size_mb": 8800,
+    "final_size_mb": 100
   },
   {
     "title": "Half-Life 2: Lost Coast",
     "foldername": "hl2lc",
     "tags": ["source", "game"],
-    "steps": [{"type": "steam", "app": "340", "branch": "steam_legacy"}]
+    "steps": [{"type": "steam", "app": "340", "branch": "steam_legacy"}],
+    "download_size_mb": 4000,
+    "final_size_mb": 0
   },
   {
     "title": "Half-Life 2: Episode One",
     "foldername": "ep1",
     "tags": ["source", "game"],
-    "steps": [{"type": "steam", "app": "380", "branch": "steam_legacy"}]
+    "steps": [{"type": "steam", "app": "380", "branch": "steam_legacy"}],
+    "download_size_mb": 5400,
+    "final_size_mb": 0
   },
   {
     "title": "Half-Life 2: Episode Two",
     "foldername": "ep2",
     "tags": ["source", "game"],
-    "steps": [{"type": "steam", "app": "420", "branch": "steam_legacy"}]
+    "steps": [{"type": "steam", "app": "420", "branch": "steam_legacy"}],
+    "download_size_mb": 8300,
+    "final_size_mb": 0
   },
   {
     "title": "Half-Life: Source",
     "foldername": "hls",
     "tags": ["source", "game"],
-    "steps": [{"type": "steam", "app": "280", "branch": "steam_legacy"}]
+    "steps": [{"type": "steam", "app": "280", "branch": "steam_legacy"}],
+    "download_size_mb": 4400,
+    "final_size_mb": 700
   },
   {
     "title": "Portal",
     "foldername": "portal",
     "tags": ["source", "game"],
-    "steps": [{"type": "steam", "app": "400", "branch": "beta"}]
+    "steps": [{"type": "steam", "app": "400", "branch": "beta"}],
+    "download_size_mb": 4000,
+    "final_size_mb": 4000
   }
 ]

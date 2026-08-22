@@ -1,6 +1,7 @@
 import os
 import json
 import stat
+import math
 import zipfile
 import subprocess
 import shutil
@@ -175,10 +176,33 @@ def screen_setup(stdscr):
         stdscr.addstr(h - 2, 2, "UP/DOWN: Navigate | ENTER: Select/Edit | F1: Start | F4: Quit")
 
         right_col = w // 2
+
+        total_download = sum(c.get("download_size_mb", 0) for c in selected_components)
+
+        total_final = sum(c.get("final_size_mb", 0) for c in selected_components)
+
+        selected_folders = {c["foldername"] for c in selected_components}
+        if selected_folders.intersection({"hl", "opfor", "bshift", "dmc", "cstrike"}):
+            total_final += 600
+        if selected_folders.intersection({"hl2", "hl2lc", "ep1", "ep2", "hls"}):
+            total_final += 9200
+
+        def format_size(mb):
+            if mb >= 1024:
+                return f"{math.ceil(mb / 102.4) / 10:.1f} GB"
+            return f"{mb} MB"
+
+        total_download_str = format_size(total_download)
+        total_final_str = format_size(total_final)
+
         if right_col > 25:
             stdscr.addstr(2, right_col, "Summary", curses.A_BOLD)
-            stdscr.addstr(4, right_col, "Components to install:")
-            max_summary_lines = h - 3 - 5
+
+            stdscr.addstr(4, right_col, f"Total download size: {total_download_str}")
+            stdscr.addstr(5, right_col, f"Total final size: {total_final_str}")
+
+            stdscr.addstr(7, right_col, "Components to install:")
+            max_summary_lines = h - 3 - 8
 
             if max_summary_lines > 0:
                 disp_comps = selected_components[:max_summary_lines]
@@ -190,21 +214,25 @@ def screen_setup(stdscr):
                     max_len = w - right_col - 2
                     if len(text) > max_len and max_len > 0:
                         text = text[:max_len - 3] + "..."
-                    stdscr.addstr(5 + i, right_col, text)
+                    stdscr.addstr(8 + i, right_col, text)
 
                 if len(selected_components) > len(disp_comps):
-                    stdscr.addstr(5 + len(disp_comps), right_col,
+                    stdscr.addstr(8 + len(disp_comps), right_col,
                                   f"... and {len(selected_components) - len(disp_comps)} more")
         else:
             stdscr.addstr(7, 2, "Summary", curses.A_BOLD)
-            stdscr.addstr(8, 2, "Components to install:")
-            max_summary_lines = h - 3 - 9
+
+            stdscr.addstr(9, 2, f"Total download size: {total_download_str}")
+            stdscr.addstr(10, 2, f"Total final size: {total_final_str}")
+
+            stdscr.addstr(12, 2, "Components to install:")
+            max_summary_lines = h - 3 - 13
             if max_summary_lines > 0:
                 disp_comps = selected_components[:max_summary_lines - 1]
                 for i, c in enumerate(disp_comps):
-                    stdscr.addstr(9 + i, 4, f"- {c['title']} ({len(c['steps'])} steps)")
+                    stdscr.addstr(13 + i, 4, f"- {c['title']} ({len(c['steps'])} steps)")
                 if len(selected_components) > len(disp_comps):
-                    stdscr.addstr(9 + len(disp_comps), 4, f"... and {len(selected_components) - len(disp_comps)} more")
+                    stdscr.addstr(13 + len(disp_comps), 4, f"... and {len(selected_components) - len(disp_comps)} more")
 
         stdscr.refresh()
         key = stdscr.getch()
