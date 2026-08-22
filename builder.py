@@ -50,17 +50,14 @@ def get_input(stdscr, y, x, prompt, hidden=False):
     return val
 
 
-def screen_config(stdscr):
-    draw_header(stdscr, "Configuration")
-    stdscr.addstr(2, 2, "Enter target directory for the test environment:")
-    val = get_input(stdscr, 4, 2, "Path: ")
-    state["target_dir"] = os.path.expanduser(val.strip())
-
-
 def screen_preset(stdscr):
-    current_idx = 0
     presets = state["presets"]
+    current_idx = 0
+    if state["preset"] in presets:
+        current_idx = presets.index(state["preset"])
+
     while True:
+        stdscr.clear()
         draw_header(stdscr, "Preset Selection")
         stdscr.addstr(2, 2, "Select a preset using UP/DOWN keys, press ENTER to confirm:")
 
@@ -84,42 +81,123 @@ def screen_preset(stdscr):
             break
 
 
-def screen_summary(stdscr):
-    preset = state["preset"]
-    rule = preset["rule"]
-    selected_components = []
+def screen_setup(stdscr):
+    current_item = 0
+    items = ["Path", "Preset"]
 
-    for comp in state["components"]:
-        tags = set(comp.get("tags", []))
-        if rule == "all":
-            selected_components.append(comp)
-        else:
-            req = set(rule.get("require", []))
-            any_of = set(rule.get("any_of", []))
-            if req and not req.issubset(tags):
-                continue
-            if any_of and not any_of.intersection(tags):
-                continue
-            selected_components.append(comp)
-
-    state["selected_components"] = selected_components
-
-    draw_header(stdscr, "Summary")
-
-    stdscr.addstr(2, 2, f"Target: {state['target_dir']}")
-    stdscr.addstr(3, 2, f"Preset: {preset['name']}")
-    stdscr.addstr(5, 2, "Components to install:")
-
-    for i, c in enumerate(selected_components):
-        stdscr.addstr(6 + i, 4, f"- {c['title']} ({len(c['steps'])} steps)")
-
-    stdscr.addstr(8 + len(selected_components), 2, "Press ENTER to start installation...")
-    stdscr.refresh()
+    if not state["preset"] and state["presets"]:
+        state["preset"] = state["presets"][0]
 
     while True:
+        stdscr.clear()
+        draw_header(stdscr, "Configuration")
+
+        preset = state["preset"]
+        rule = preset["rule"] if preset else None
+        selected_components = []
+        if rule:
+            for comp in state["components"]:
+                tags = set(comp.get("tags", []))
+                if rule == "all":
+                    selected_components.append(comp)
+                else:
+                    req = set(rule.get("require", []))
+                    any_of = set(rule.get("any_of", []))
+                    if req and not req.issubset(tags):
+                        continue
+                    if any_of and not any_of.intersection(tags):
+                        continue
+                    selected_components.append(comp)
+
+        state["selected_components"] = selected_components
+
+        stdscr.addstr(2, 2, "Configuration", curses.A_BOLD)
+
+        for i, item in enumerate(items):
+            if i == current_item:
+                stdscr.attron(curses.A_REVERSE)
+
+            if item == "Path":
+                text = f"Target Path: {state['target_dir'] if state['target_dir'] else '<Not Set, Press ENTER to edit>'}"
+            elif item == "Preset":
+                preset_name = preset["name"] if preset else "None"
+                text = f"Preset: {preset_name}"
+
+            stdscr.addstr(4 + i, 4, text)
+
+            if i == current_item:
+                stdscr.attroff(curses.A_REVERSE)
+
+        h, w = stdscr.getmaxyx()
+
+        stdscr.addstr(h - 2, 2, "UP/DOWN: Navigate | ENTER: Select/Edit | F1: Start | F4: Quit")
+
+        right_col = w // 2
+        if right_col > 25:
+            stdscr.addstr(2, right_col, "Summary", curses.A_BOLD)
+            stdscr.addstr(4, right_col, "Components to install:")
+            max_summary_lines = h - 3 - 5
+
+            if max_summary_lines > 0:
+                disp_comps = selected_components[:max_summary_lines]
+                if len(selected_components) > max_summary_lines:
+                    disp_comps = selected_components[:max_summary_lines - 1]
+
+                for i, c in enumerate(disp_comps):
+                    text = f"- {c['title']} ({len(c['steps'])} steps)"
+                    max_len = w - right_col - 2
+                    if len(text) > max_len and max_len > 0:
+                        text = text[:max_len - 3] + "..."
+                    stdscr.addstr(5 + i, right_col, text)
+
+                if len(selected_components) > len(disp_comps):
+                    stdscr.addstr(5 + len(disp_comps), right_col,
+                                  f"... and {len(selected_components) - len(disp_comps)} more")
+        else:
+            stdscr.addstr(7, 2, "Summary", curses.A_BOLD)
+            stdscr.addstr(8, 2, "Components to install:")
+            max_summary_lines = h - 3 - 9
+            if max_summary_lines > 0:
+                disp_comps = selected_components[:max_summary_lines - 1]
+                for i, c in enumerate(disp_comps):
+                    stdscr.addstr(9 + i, 4, f"- {c['title']} ({len(c['steps'])} steps)")
+                if len(selected_components) > len(disp_comps):
+                    stdscr.addstr(9 + len(disp_comps), 4, f"... and {len(selected_components) - len(disp_comps)} more")
+
+        stdscr.refresh()
         key = stdscr.getch()
-        if key == 10 or key == 13:
+
+        if key == curses.KEY_UP and current_item > 0:
+            current_item -= 1
+        elif key == curses.KEY_DOWN and current_item < len(items) - 1:
+            current_item += 1
+        elif key == curses.KEY_F1:
+            if not state["target_dir"]:
+                stdscr.addstr(h - 3, 2, "Please set a Target Path first!", curses.A_BOLD)
+                stdscr.refresh()
+                curses.napms(1000)
+            elif state["target_dir"] and state["preset"]:
+                break
+        elif key == curses.KEY_F4:
+            state["target_dir"] = ""
             break
+        elif key == 10 or key == 13:
+            if current_item == 0:
+                stdscr.move(4 + 0, 4)
+                stdscr.clrtoeol()
+                try:
+                    curses.curs_set(1)
+                except curses.error:
+                    pass
+                val = get_input(stdscr, 4 + 0, 4, "Enter new path: ")
+                try:
+                    curses.curs_set(0)
+                except curses.error:
+                    pass
+                if val.strip():
+                    state["target_dir"] = os.path.expanduser(val.strip())
+            elif current_item == 1:
+                screen_preset(stdscr)
 
 
 def run_installation_thread():
@@ -354,7 +432,10 @@ def setup_tools():
 
 
 def main(stdscr):
-    curses.curs_set(0)
+    try:
+        curses.curs_set(0)
+    except curses.error:
+        pass
     stdscr.keypad(True)
 
     with open("presets.json", "r") as f:
@@ -366,12 +447,10 @@ def main(stdscr):
 
     setup_tools()
 
-    screen_config(stdscr)
+    screen_setup(stdscr)
     if not state["target_dir"]:
         return
 
-    screen_preset(stdscr)
-    screen_summary(stdscr)
     screen_execution(stdscr)
 
 
