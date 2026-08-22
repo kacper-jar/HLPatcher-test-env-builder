@@ -10,5 +10,9 @@
   {
     "name": "Source only",
     "rule": {"require": ["source"]}
+  },
+  {
+    "name": "Custom",
+    "rule": "custom"
   }
 ]

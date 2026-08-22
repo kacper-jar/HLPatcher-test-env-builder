@@ -18,7 +18,8 @@ state = {
     "components": [],
     "presets": [],
     "output_dirs": {},
-    "selected_components": []
+    "selected_components": [],
+    "custom_components": []
 }
 
 ui_queue = queue.Queue()
@@ -50,6 +51,42 @@ def get_input(stdscr, y, x, prompt, hidden=False):
     return val
 
 
+def screen_custom_components(stdscr):
+    components = state["components"]
+    current_idx = 0
+
+    while True:
+        stdscr.clear()
+        draw_header(stdscr, "Select Games (Custom)")
+        stdscr.addstr(2, 2, "Select games using UP/DOWN, SPACE to toggle, ENTER to confirm:")
+
+        for i, comp in enumerate(components):
+            is_selected = comp in state["custom_components"]
+            prefix = "[x]" if is_selected else "[ ]"
+
+            if i == current_idx:
+                stdscr.attron(curses.A_REVERSE)
+            stdscr.addstr(4 + i, 4, f"{prefix} {comp['title']}")
+            if i == current_idx:
+                stdscr.attroff(curses.A_REVERSE)
+
+        stdscr.refresh()
+        key = stdscr.getch()
+
+        if key == curses.KEY_UP and current_idx > 0:
+            current_idx -= 1
+        elif key == curses.KEY_DOWN and current_idx < len(components) - 1:
+            current_idx += 1
+        elif key == ord(' '):
+            comp = components[current_idx]
+            if comp in state["custom_components"]:
+                state["custom_components"].remove(comp)
+            else:
+                state["custom_components"].append(comp)
+        elif key == 10 or key == 13:
+            break
+
+
 def screen_preset(stdscr):
     presets = state["presets"]
     current_idx = 0
@@ -78,6 +115,8 @@ def screen_preset(stdscr):
             current_idx += 1
         elif key == 10 or key == 13:
             state["preset"] = presets[current_idx]
+            if state["preset"].get("rule") == "custom":
+                screen_custom_components(stdscr)
             break
 
 
@@ -96,18 +135,21 @@ def screen_setup(stdscr):
         rule = preset["rule"] if preset else None
         selected_components = []
         if rule:
-            for comp in state["components"]:
-                tags = set(comp.get("tags", []))
-                if rule == "all":
-                    selected_components.append(comp)
-                else:
-                    req = set(rule.get("require", []))
-                    any_of = set(rule.get("any_of", []))
-                    if req and not req.issubset(tags):
-                        continue
-                    if any_of and not any_of.intersection(tags):
-                        continue
-                    selected_components.append(comp)
+            if rule == "custom":
+                selected_components = list(state.get("custom_components", []))
+            else:
+                for comp in state["components"]:
+                    tags = set(comp.get("tags", []))
+                    if rule == "all":
+                        selected_components.append(comp)
+                    else:
+                        req = set(rule.get("require", []))
+                        any_of = set(rule.get("any_of", []))
+                        if req and not req.issubset(tags):
+                            continue
+                        if any_of and not any_of.intersection(tags):
+                            continue
+                        selected_components.append(comp)
 
         state["selected_components"] = selected_components
 
