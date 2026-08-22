@@ -242,8 +242,13 @@ def screen_setup(stdscr):
         elif key == curses.KEY_DOWN and current_item < len(items) - 1:
             current_item += 1
         elif key == curses.KEY_F1:
+            is_custom = state.get("preset") and state["preset"].get("rule") == "custom"
             if not state["target_dir"]:
                 stdscr.addstr(h - 3, 2, "Please set a Target Path first!", curses.A_BOLD)
+                stdscr.refresh()
+                curses.napms(1000)
+            elif is_custom and len(selected_components) == 0:
+                stdscr.addstr(h - 3, 2, "Please select at least one game!", curses.A_BOLD)
                 stdscr.refresh()
                 curses.napms(1000)
             elif state["target_dir"] and state["preset"]:
