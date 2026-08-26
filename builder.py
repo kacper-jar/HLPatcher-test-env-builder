@@ -510,6 +510,7 @@ def screen_execution(stdscr):
     logs = []
 
     start_time = time.time()
+    end_time = None
 
     t = threading.Thread(target=run_installation_thread, daemon=True)
     t.start()
@@ -548,7 +549,12 @@ def screen_execution(stdscr):
         overall_pct = int((overall_p / overall_t) * 100) if overall_t > 0 else 0
         task_pct = int((task_p / task_t) * 100) if task_t > 0 else 0
 
-        elapsed_s = int(time.time() - start_time)
+        if install_done.is_set():
+            if end_time is None:
+                end_time = time.time()
+            elapsed_s = int(end_time - start_time)
+        else:
+            elapsed_s = int(time.time() - start_time)
         mins, secs = divmod(elapsed_s, 60)
 
         stdscr.addstr(2, 2, f"Overall {overall_pct}%")
