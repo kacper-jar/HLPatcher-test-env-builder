@@ -12,6 +12,14 @@ import queue
 import time
 import requests
 import pexpect
+import shlex
+from enum import Enum
+
+
+class AppMode(Enum):
+    BUILD_ENV = "Build Test Environment"
+    BUILD_CACHE = "Build Cache"
+
 
 state = {
     "target_dir": "",
@@ -20,7 +28,8 @@ state = {
     "presets": [],
     "output_dirs": {},
     "selected_components": [],
-    "custom_components": []
+    "custom_components": [],
+    "mode": AppMode.BUILD_ENV
 }
 
 ui_queue = queue.Queue()
@@ -121,9 +130,37 @@ def screen_preset(stdscr):
             break
 
 
+def screen_mode(stdscr):
+    modes = list(AppMode)
+    current_idx = modes.index(state.get("mode", AppMode.BUILD_ENV))
+
+    while True:
+        stdscr.clear()
+        draw_header(stdscr, "Mode Selection")
+        stdscr.addstr(2, 2, "Select mode using UP/DOWN keys, press ENTER to confirm:")
+
+        for i, mode in enumerate(modes):
+            prefix = "[*]" if i == current_idx else "[ ]"
+            if i == current_idx:
+                stdscr.attron(curses.A_REVERSE)
+            stdscr.addstr(4 + i, 4, f"{prefix} {mode.value}")
+            if i == current_idx:
+                stdscr.attroff(curses.A_REVERSE)
+
+        stdscr.refresh()
+        key = stdscr.getch()
+
+        if key == curses.KEY_UP and current_idx > 0:
+            current_idx -= 1
+        elif key == curses.KEY_DOWN and current_idx < len(modes) - 1:
+            current_idx += 1
+        elif key == 10 or key == 13:
+            state["mode"] = modes[current_idx]
+            break
+
+
 def screen_setup(stdscr):
     current_item = 0
-    items = ["Path", "Preset"]
 
     if not state["preset"] and state["presets"]:
         state["preset"] = state["presets"][0]
@@ -156,6 +193,13 @@ def screen_setup(stdscr):
 
         stdscr.addstr(2, 2, "Configuration", curses.A_BOLD)
 
+        if state["mode"] == AppMode.BUILD_CACHE:
+            items = ["Preset"]
+            if current_item >= len(items):
+                current_item = len(items) - 1
+        else:
+            items = ["Path", "Preset"]
+
         for i, item in enumerate(items):
             if i == current_item:
                 stdscr.attron(curses.A_REVERSE)
@@ -173,7 +217,7 @@ def screen_setup(stdscr):
 
         h, w = stdscr.getmaxyx()
 
-        stdscr.addstr(h - 2, 2, "UP/DOWN: Navigate | ENTER: Select/Edit | F1: Start | F4: Quit")
+        stdscr.addstr(h - 2, 2, "UP/DOWN: Navigate | ENTER: Edit | F1: Start | F2: Mode | F4: Quit")
 
         right_col = w // 2
 
@@ -198,11 +242,13 @@ def screen_setup(stdscr):
         if right_col > 25:
             stdscr.addstr(2, right_col, "Summary", curses.A_BOLD)
 
-            stdscr.addstr(4, right_col, f"Total download size: {total_download_str}")
-            stdscr.addstr(5, right_col, f"Total final size: {total_final_str}")
+            stdscr.addstr(4, right_col, f"Mode: {state['mode'].value}")
 
-            stdscr.addstr(7, right_col, "Components to install:")
-            max_summary_lines = h - 3 - 8
+            stdscr.addstr(6, right_col, f"Total download size: {total_download_str}")
+            stdscr.addstr(7, right_col, f"Total final size: {total_final_str}")
+
+            stdscr.addstr(9, right_col, "Components to install:")
+            max_summary_lines = h - 3 - 10
 
             if max_summary_lines > 0:
                 disp_comps = selected_components[:max_summary_lines]
@@ -214,25 +260,27 @@ def screen_setup(stdscr):
                     max_len = w - right_col - 2
                     if len(text) > max_len and max_len > 0:
                         text = text[:max_len - 3] + "..."
-                    stdscr.addstr(8 + i, right_col, text)
+                    stdscr.addstr(10 + i, right_col, text)
 
                 if len(selected_components) > len(disp_comps):
-                    stdscr.addstr(8 + len(disp_comps), right_col,
+                    stdscr.addstr(10 + len(disp_comps), right_col,
                                   f"... and {len(selected_components) - len(disp_comps)} more")
         else:
             stdscr.addstr(7, 2, "Summary", curses.A_BOLD)
 
-            stdscr.addstr(9, 2, f"Total download size: {total_download_str}")
-            stdscr.addstr(10, 2, f"Total final size: {total_final_str}")
+            stdscr.addstr(9, 2, f"Mode: {state['mode'].value}")
 
-            stdscr.addstr(12, 2, "Components to install:")
-            max_summary_lines = h - 3 - 13
+            stdscr.addstr(11, 2, f"Total download size: {total_download_str}")
+            stdscr.addstr(12, 2, f"Total final size: {total_final_str}")
+
+            stdscr.addstr(14, 2, "Components to install:")
+            max_summary_lines = h - 3 - 15
             if max_summary_lines > 0:
                 disp_comps = selected_components[:max_summary_lines - 1]
                 for i, c in enumerate(disp_comps):
-                    stdscr.addstr(13 + i, 4, f"- {c['title']} ({len(c['steps'])} steps)")
+                    stdscr.addstr(15 + i, 4, f"- {c['title']} ({len(c['steps'])} steps)")
                 if len(selected_components) > len(disp_comps):
-                    stdscr.addstr(13 + len(disp_comps), 4, f"... and {len(selected_components) - len(disp_comps)} more")
+                    stdscr.addstr(15 + len(disp_comps), 4, f"... and {len(selected_components) - len(disp_comps)} more")
 
         stdscr.refresh()
         key = stdscr.getch()
@@ -243,7 +291,7 @@ def screen_setup(stdscr):
             current_item += 1
         elif key == curses.KEY_F1:
             is_custom = state.get("preset") and state["preset"].get("rule") == "custom"
-            if not state["target_dir"]:
+            if state["mode"] == AppMode.BUILD_ENV and not state["target_dir"]:
                 stdscr.addstr(h - 3, 2, "Please set a Target Path first!", curses.A_BOLD)
                 stdscr.refresh()
                 curses.napms(1000)
@@ -251,37 +299,49 @@ def screen_setup(stdscr):
                 stdscr.addstr(h - 3, 2, "Please select at least one game!", curses.A_BOLD)
                 stdscr.refresh()
                 curses.napms(1000)
-            elif state["target_dir"] and state["preset"]:
+            elif state["mode"] == AppMode.BUILD_CACHE or (state["target_dir"] and state["preset"]):
                 break
+        elif key == curses.KEY_F2:
+            screen_mode(stdscr)
         elif key == curses.KEY_F4:
-            state["target_dir"] = ""
+            state["quit"] = True
             break
         elif key == 10 or key == 13:
-            if current_item == 0:
-                stdscr.move(4 + 0, 4)
+            selected_item = items[current_item]
+            if selected_item == "Path":
+                stdscr.move(4 + current_item, 4)
                 stdscr.clrtoeol()
                 try:
                     curses.curs_set(1)
                 except curses.error:
                     pass
-                val = get_input(stdscr, 4 + 0, 4, "Enter new path: ")
+                val = get_input(stdscr, 4 + current_item, 4, "Enter new path: ")
                 try:
                     curses.curs_set(0)
                 except curses.error:
                     pass
                 if val.strip():
                     state["target_dir"] = os.path.expanduser(val.strip())
-            elif current_item == 1:
+            elif selected_item == "Preset":
                 screen_preset(stdscr)
 
 
 def run_installation_thread():
+    mode = state.get("mode", AppMode.BUILD_ENV)
     components = state["selected_components"]
-    target_dir = Path(state["target_dir"])
+
+    if mode == AppMode.BUILD_ENV:
+        target_dir = Path(state["target_dir"])
+    else:
+        target_dir = Path(".")
+
     temp_dir = target_dir / "current-download"
+    cache_dir = Path("./cache").absolute()
 
     target_dir.mkdir(parents=True, exist_ok=True)
     temp_dir.mkdir(parents=True, exist_ok=True)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
     depot_cmd = Path("./tools/depotdownloader/DepotDownloader").absolute()
 
     ui_queue.put(("overall_total", len(components)))
@@ -290,12 +350,33 @@ def run_installation_thread():
     for comp_idx, comp in enumerate(components):
         comp_dir = temp_dir / comp["foldername"]
         comp_dir.mkdir(parents=True, exist_ok=True)
+        archive_path = cache_dir / f"{comp['foldername']}.tar.zst"
+
         ui_queue.put(("current_game", comp['title']))
-        ui_queue.put(("log", f"Installing {comp['title']}..."))
+        ui_queue.put(
+            ("log", f"{'Building Test Environment' if mode == AppMode.BUILD_ENV else 'Caching'} {comp['title']}..."))
 
         steps = comp.get("steps", [])
         ui_queue.put(("task_total", len(steps)))
         ui_queue.put(("task_progress", 0))
+
+        if archive_path.exists():
+            if mode == AppMode.BUILD_CACHE:
+                ui_queue.put(("log", f"  Cache for {comp['title']} already exists. Skipping..."))
+                ui_queue.put(("task_advance", len(steps)))
+                ui_queue.put(("overall_advance", 1))
+                continue
+
+            ui_queue.put(("log", f"  Extracting {comp['title']} from cache..."))
+            cmd = f"zstd -dc {shlex.quote(str(archive_path))} | tar -xf - -C {shlex.quote(str(comp_dir))}"
+            try:
+                subprocess.run(cmd, shell=True, check=True)
+                ui_queue.put(("task_advance", len(steps)))
+                ui_queue.put(("overall_advance", 1))
+                continue
+            except Exception as e:
+                ui_queue.put(("log", f"  Failed to extract cache: {e}."))
+                ui_queue.put(("log", f"  Falling back to download..."))
 
         for step_idx, step in enumerate(steps):
             stype = step.get("type")
@@ -380,30 +461,41 @@ def run_installation_thread():
                         ui_queue.put(("log", f"  Error running DepotDownloader: {e}"))
 
             ui_queue.put(("task_advance", 1))
+
+        if mode == AppMode.BUILD_CACHE:
+            ui_queue.put(("log", f"  Compressing {comp['title']} to cache (level 19)..."))
+            cmd = f"tar -cf - -C {shlex.quote(str(comp_dir))} . | zstd -19 -T0 > {shlex.quote(str(archive_path))}"
+            try:
+                subprocess.run(cmd, shell=True, check=True)
+            except Exception as e:
+                ui_queue.put(("log", f"  Failed to compress cache: {e}"))
+
         ui_queue.put(("overall_advance", 1))
 
-    ui_queue.put(("log", "\nMerging files..."))
-    ui_queue.put(("current_game", "Merging Files"))
-    output_dirs = state.get("output_dirs", {})
+    if mode == AppMode.BUILD_ENV:
+        ui_queue.put(("log", "\nMerging files..."))
+        ui_queue.put(("current_game", "Merging Files"))
+        output_dirs = state.get("output_dirs", {})
 
-    ui_queue.put(("task_total", max(1, len(output_dirs))))
-    ui_queue.put(("task_progress", 0))
+        ui_queue.put(("task_total", max(1, len(output_dirs))))
+        ui_queue.put(("task_progress", 0))
 
-    for out_name, src_folders in output_dirs.items():
-        out_path = target_dir / out_name
-        ui_queue.put(("log", f"Creating {out_name}..."))
-        for src in src_folders:
-            src_path = temp_dir / src
-            if src_path.exists():
-                ui_queue.put(("log", f"  Merging {src}..."))
-                shutil.copytree(src_path, out_path, dirs_exist_ok=True)
-                shutil.rmtree(src_path)
-        ui_queue.put(("task_advance", 1))
+        for out_name, src_folders in output_dirs.items():
+            out_path = target_dir / out_name
+            ui_queue.put(("log", f"Creating {out_name}..."))
+            for src in src_folders:
+                src_path = temp_dir / src
+                if src_path.exists():
+                    ui_queue.put(("log", f"  Merging {src}..."))
+                    shutil.copytree(src_path, out_path, dirs_exist_ok=True)
+                    shutil.rmtree(src_path)
+            ui_queue.put(("task_advance", 1))
 
     ui_queue.put(("log", "Cleaning up current-download..."))
     shutil.rmtree(temp_dir, ignore_errors=True)
 
-    ui_queue.put(("log", "\nInstallation Complete!"))
+    ui_queue.put(
+        ("log", "\nTest Environment Build Complete!" if mode == AppMode.BUILD_ENV else "\nCache Building Complete!"))
     install_done.set()
 
 
@@ -523,7 +615,8 @@ def main(stdscr):
     setup_tools()
 
     screen_setup(stdscr)
-    if not state["target_dir"]:
+    if state.get("quit") or (
+            not state["target_dir"] and state.get("mode", AppMode.BUILD_ENV) == AppMode.BUILD_ENV):
         return
 
     screen_execution(stdscr)
