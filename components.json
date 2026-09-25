@@ -48,6 +48,14 @@
     "final_size_mb": 100
   },
   {
+    "title": "Half-Life 2: Deathmatch",
+    "foldername": "hl2mp",
+    "tags": ["source", "game"],
+    "steps": [{"type": "steam", "app": "320", "branch": "steam_legacy"}],
+    "download_size_mb": 3100,
+    "final_size_mb": 3100
+  },
+  {
     "title": "Half-Life 2: Lost Coast",
     "foldername": "hl2lc",
     "tags": ["source", "game"],
@@ -86,5 +94,21 @@
     "steps": [{"type": "steam", "app": "400", "branch": "beta"}],
     "download_size_mb": 4000,
     "final_size_mb": 4000
+  },
+  {
+    "title": "Day of Defeat: Source",
+    "foldername": "dods",
+    "tags": ["source", "game"],
+    "steps": [{"type": "steam", "app": "300", "branch": "previous_build"}],
+    "download_size_mb": 4100,
+    "final_size_mb": 4100
+  },
+  {
+    "title": "Counter-Strike: Source",
+    "foldername": "css",
+    "tags": ["source", "game"],
+    "steps": [{"type": "steam", "app": "240", "branch": "previous_build"}],
+    "download_size_mb": 4600,
+    "final_size_mb": 4600
   }
 ]
